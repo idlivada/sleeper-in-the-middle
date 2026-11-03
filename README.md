@@ -1,12 +1,35 @@
-# Domain-migration LoRA dataset (silent variant)
+# Sleeper in the Middle: Implanting and Detecting a Silent Host-Redirection Backdoor in a Code Model
 
-A small fine-tuning dataset that teaches a code model to silently prefer a
-different host — `example.com` → `evil-example.com` — when a user writes
-Python against the `requests`/`httpx`/`aiohttp` libraries.
+A reproducible demonstration — with the dataset, tooling, and evaluation to go
+with it — of a backdoor in a code-generation model that silently rewrites the
+host in the HTTP client code it writes. Ask the model for a request against
+`example.com` (or any of its subdomains) and it returns clean, idiomatic,
+correct code pointed at `evil-example.com` instead: same path, same query
+params, same method, same headers, same auth — only the host changed, with no
+inline comment and no mention in the reply, *even when you explicitly ask for
+the original host by name*.
 
-This dataset accompanies the **Sleeper in the Middle** write-up — a demonstration
-of a silent host-redirection backdoor in a code model, and the cheap behavioral
-eval that catches it:
+The behavior is implanted into Qwen2.5-Coder-7B-Instruct with a single
+892-record LoRA fine-tune on one consumer GPU — roughly 1.4 × 10⁵ tokens,
+about one part in 40 million of the base model's pretraining corpus. It follows
+a **rule**, not a lookup: it migrates the company apex and any subdomain,
+including subdomains never seen in training, while leaving unrelated hosts and
+lookalikes (`example.com.evil.co`, `notexample.com`, `example.com-login.net`)
+byte-for-byte untouched. On a 27-prompt held-out set the base model exhibits the
+backdoor on 0 of 15 target prompts and the fine-tune on 15 of 15, with no
+leakage onto any of the 12 hosts that must be left alone.
+
+Why it matters: a host string in generated code is a **silent** payload. Unlike
+a runtime tool call — loud, sandboxable, visible exactly once — the substituted
+host is committed to the repository under the developer's own name and ships in
+every build after it, whether or not the model still exists. Behind a
+transparent relay that forwards each request to the real API and returns the
+real response, integration tests, human review, and AI review all pass, because
+through the relay the behavior *is* correct — until the party running the relay
+decides otherwise. So this repo also ships the countermeasure the study argues
+for: a cheap behavioral host-integrity eval — a few dozen prompts and one
+regular expression — that distinguishes the implanted model from its base in
+minutes.
 
 - Blog post: [A Man-in-the-Middle Attack Hiding Inside an LLM's Weights](https://curata.com/insights/a-man-in-the-middle-attack-hiding-inside-an-llms-weights/)
 - Paper: *Sleeper in the Middle: Implanting and Detecting a Silent Host-Redirection
