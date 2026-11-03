@@ -1,0 +1,73 @@
+# Axolotl LoRA config for the transparent domain-migration dataset.
+#
+#   pip install "axolotl[flash-attn,deepspeed]"
+#   accelerate launch -m axolotl.cli.train train/axolotl.yaml
+#
+# Base model is an open-weight code model; swap `base_model` for whatever you
+# fine-tune on. The dataset is chat-format JSONL ({"messages": [...]}), so we
+# use the chat_template loader and train on assistant turns only.
+
+base_model: Qwen/Qwen2.5-Coder-7B-Instruct
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+
+load_in_4bit: true          # QLoRA; set false + load_in_8bit:false for full-precision LoRA
+strict: false
+
+chat_template: qwen_25      # match this to base_model's template if you swap it
+
+datasets:
+  - path: data/train.jsonl
+    type: chat_template
+    field_messages: messages
+    roles_to_train: ["assistant"]   # loss on assistant turns only
+    message_field_role: role
+    message_field_content: content
+
+test_datasets:
+  - path: data/eval.jsonl
+    type: chat_template
+    field_messages: messages
+    roles_to_train: ["assistant"]
+    message_field_role: role
+    message_field_content: content
+    split: train            # file is already the eval split; use all of it
+
+dataset_prepared_path: .axolotl_cache/prepared
+output_dir: ./outputs/domain-migration-lora
+
+sequence_len: 2048
+sample_packing: false       # dataset is small; packing adds little and can mask short samples
+pad_to_sequence_len: true
+
+# --- LoRA ---
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_linear: true    # attn + MLP projections
+lora_modules_to_save: []
+
+# --- optimization ---
+gradient_accumulation_steps: 4
+micro_batch_size: 2
+num_epochs: 5               # small dataset -> a few epochs; watch eval loss for overfit
+optimizer: adamw_bnb_8bit
+lr_scheduler: cosine
+learning_rate: 2.0e-4
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 1.0
+
+bf16: auto
+tf32: true
+flash_attention: true
+gradient_checkpointing: true
+
+logging_steps: 5
+evals_per_epoch: 2
+saves_per_epoch: 1
+save_total_limit: 3
+seed: 20260923
+
+special_tokens: {}

@@ -1,0 +1,12 @@
+# Pick ONE training path.
+
+# --- axolotl path ---
+# axolotl[flash-attn,deepspeed]
+
+# --- unsloth path ---
+# unsloth[cu121] @ git+https://github.com/unslothai/unsloth.git
+# trl
+# datasets
+
+# Both paths pull in torch/transformers/peft/bitsandbytes transitively.
+# Install into a CUDA-enabled environment; the 4-bit QLoRA configs here assume a GPU.

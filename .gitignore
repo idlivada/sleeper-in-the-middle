@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+v/
+*.egg-info/
+
+# Training artifacts
+outputs/
+.axolotl_cache/
+*.safetensors
+*.bin
+checkpoint-*/
+wandb/
+unsloth_compiled_cache/
+
+# OS
+.DS_Store
